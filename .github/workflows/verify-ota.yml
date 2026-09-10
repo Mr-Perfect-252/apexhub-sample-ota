@@ -27,7 +27,7 @@ jobs:
       - name: Build v1 APK (versionCode 1 / versionName 1.0.0)
         run: ./gradlew :app:assembleDebug --stacktrace
 
-      - name: Run deterministic SDK tests (Robolectric: detection + prompt)
+      - name: "Run deterministic SDK tests (Robolectric: detection + prompt)"
         run: ./gradlew :app:testDebugUnitTest --stacktrace
 
       - name: Upload v1 APK (the "downloaded" baseline app)
