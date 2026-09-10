@@ -1,0 +1,98 @@
+name: Verify OTA update flow
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch: {}
+
+jobs:
+  build-and-unit-test:
+    name: Build v1 APK + deterministic SDK tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Make gradlew executable
+        run: chmod +x ./gradlew
+
+      - name: Build v1 APK (versionCode 1 / versionName 1.0.0)
+        run: ./gradlew :app:assembleDebug --stacktrace
+
+      - name: Run deterministic SDK tests (Robolectric: detection + prompt)
+        run: ./gradlew :app:testDebugUnitTest --stacktrace
+
+      - name: Upload v1 APK (the "downloaded" baseline app)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: apexhub-ota-sample-v1-apk
+          path: app/build/outputs/apk/debug/*.apk
+
+      - name: Upload unit test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-test-report
+          path: app/build/reports/tests/testDebugUnitTest
+
+  instrumented-emulator-test:
+    name: Emulator UiAutomator screenshot proof
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Make gradlew executable
+        run: chmod +x ./gradlew
+
+      - name: Run instrumented test on emulator (captures dialog screenshot)
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 30
+          target: google_apis
+          arch: x86_64
+          profile: pixel_5
+          disable-animations: true
+          script: |
+            adb wait-for-device
+            ./gradlew :app:connectedDebugAndroidTest --stacktrace
+            mkdir -p artifacts/screenshots
+            adb pull /sdcard/Android/data/com.apexhub.ota.sample/files/screenshots artifacts/ || true
+            find artifacts -type f || true
+
+      - name: Upload emulator screenshot
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ota-update-prompt-screenshot
+          path: artifacts/**
+
+      - name: Upload instrumented test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: instrumented-test-report
+          path: app/build/reports/androidTests/connected
