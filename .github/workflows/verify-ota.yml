@@ -80,7 +80,13 @@ jobs:
             adb wait-for-device
             ./gradlew :app:connectedDebugAndroidTest --stacktrace
             mkdir -p artifacts
-            adb pull /sdcard/Android/data/com.apexhub.ota.sample/files/screenshots/update_prompt.png artifacts/update_prompt.png || true
+            # google_apis emulator images allow root adbd, which can read the app's
+            # external files dir regardless of scoped-storage/uid boundaries.
+            adb root || true
+            adb wait-for-device
+            SHOT=$(adb shell "find /sdcard /storage/emulated/0 /data/media -name update_prompt.png 2>/dev/null" | tr -d '\r' | head -1)
+            echo "located screenshot: '$SHOT'"
+            if [ -n "$SHOT" ]; then adb pull "$SHOT" artifacts/update_prompt.png || true; fi
             ls -l artifacts || true
 
       - name: Upload emulator screenshot
