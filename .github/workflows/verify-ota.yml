@@ -71,7 +71,7 @@ jobs:
       - name: Run instrumented test on emulator (captures dialog screenshot)
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 30
+          api-level: 29
           target: google_apis
           arch: x86_64
           profile: pixel_5
@@ -80,9 +80,7 @@ jobs:
             adb wait-for-device
             ./gradlew :app:connectedDebugAndroidTest --stacktrace
             mkdir -p artifacts
-            # The debug app is debuggable, so run-as can read its internal files dir
-            # (reliable across API levels, unlike adb pull of scoped /sdcard/Android/data).
-            adb exec-out run-as com.apexhub.ota.sample cat files/screenshots/update_prompt.png > artifacts/update_prompt.png || true
+            adb pull /sdcard/Android/data/com.apexhub.ota.sample/files/screenshots/update_prompt.png artifacts/update_prompt.png || true
             ls -l artifacts || true
 
       - name: Upload emulator screenshot

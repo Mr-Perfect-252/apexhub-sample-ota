@@ -36,10 +36,10 @@ class OtaPromptInstrumentedTest {
         // The SDK performs a network check on launch, then shows the dialog.
         val appeared = device.wait(Until.hasObject(By.textContains("Update available")), 40_000)
 
-        // Capture a screenshot regardless, for evidence. Write to the app's
-        // INTERNAL files dir so it can be pulled via `adb run-as` on any API level
-        // (scoped storage blocks adb access to /sdcard/Android/data on API 30+).
-        val outDir = File(ctx.filesDir, "screenshots").apply { mkdirs() }
+        // Capture a screenshot regardless, for evidence. Written to the app's
+        // external files dir; pulled by the workflow via `adb pull` (API 29 emulator,
+        // where adb can still read /sdcard/Android/data).
+        val outDir = File(ctx.getExternalFilesDir(null), "screenshots").apply { mkdirs() }
         val shot = File(outDir, "update_prompt.png")
         device.takeScreenshot(shot)
 
